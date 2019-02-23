@@ -8,12 +8,12 @@ Correspondence: JE (joan.edwards[at]wur.nl)
 
 ```
 Structure:  
-EdwardsJ_2019_EquineCoreMicrobiome|  
-                             |---- Bacterial  
+EdwardsJ_2019_EquineCoreMicrobiome| # Main repository  
+                             |---- Bacterial # Data and codes for bacterial and archeal community analysis.  
                                    |---  
                                    |---  
                                    |---  
-                             |---- Fungal  
+                             |---- Fungal # Data and codes for fungal community analysis.  
                                    |---  
                                    |---  
                                    |---  
