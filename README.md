@@ -1,12 +1,12 @@
 
-Study title: EdwardsJ_2019_EquineCoreMicrobiome  
+Study title: The Core Equine Hindgut Faecal Microbiome: A Broader Perspective  
 ---------------------------------------------------------------------------------
 
 Authors: J.E. Edwards*, S.A. Shetty, P. van den Berg, F. Burden, D.A. van Doorn, W.F. Pellikaan, J. Dijkstra and H. Smidt  
 
 Correspondence: JE (joan.edwards[at]wur.nl)   
 
-This repository contains codes for analysis done in the research article by Atashgahi S., et al (2018) EdwardsJ_2019_EquineCoreMicrobiome.  _Under review_. [XX](tobeupdated_when_uplished).  
+This repository contains codes for analysis done in the research article by Edwards JE, et al (2018) The Core Equine Hindgut Faecal Microbiome: A Broader Perspective.  _Under review_. [XX](tobeupdated_when_uplished).  
 
 Structure:  
 EdwardsJ_2019_EquineCoreMicrobiome  
