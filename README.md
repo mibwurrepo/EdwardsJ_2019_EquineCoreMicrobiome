@@ -6,6 +6,7 @@ Authors: J.E. Edwards*, S.A. Shetty, P. van den Berg, F. Burden, D.A. van Doorn,
 
 Correspondence: JE (joan.edwards[at]wur.nl)   
 
+```
 Structure:  
 EdwardsJ_2019_EquineCoreMicrobiome|  
                              |---- Bacterial  
@@ -16,3 +17,8 @@ EdwardsJ_2019_EquineCoreMicrobiome|
                                    |---  
                                    |---  
                                    |---  
+
+
+```
+
+
