@@ -16,11 +16,11 @@ project folder:
 Structure:  
 EdwardsJ_2019_EquineCoreMicrobiome/ # Main repository  
                      |---- Sequencing Barcode Tables_GitHub_21Feb2019.xlsx # Per sample barcode informaation.  
-                     |---- Bacterial/ # Data and codes for bacterial and archeal community analysis.  
+                     |---- bacterial_data_4Feb2019/ # Data and codes for bacterial and archeal community analysis.  
                               |---  
                               |---  
                               |---  
-                     |---- Fungal/ # Data and codes for fungal community analysis.  
+                     |---- fungal_data_4Feb2019/ # Data and codes for fungal community analysis.  
                               |---  
                               |---  
                               |---  
