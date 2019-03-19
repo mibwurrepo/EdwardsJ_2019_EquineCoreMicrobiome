@@ -1,0 +1,262 @@
+---
+title: "The Core Equine Faecal Microbiome: A Broader Perspective (Fungal data)"
+author: "Joan E. Edwards"
+date: "5 March 2019"
+output: html_document
+---
+
+```{r}
+#Check version of R
+#R.Version()
+
+#location where packages should be installed, run this command each time you start a new session.
+#.libPaths("M:/R/R-3.4.1/library")
+#.libPaths()
+
+#set working directory each time you start a new session
+#setwd("M:/R/EAF002_AF/Jan_2019")
+
+getwd()
+```
+
+
+```{r}
+
+#activate all libraries each time you start a new session:
+library(microbiome)
+library(microbiomeutilities)
+library(RColorBrewer)
+library(picante)
+library(ggpubr)
+
+dir.create("results")
+
+```
+
+## Read files
+
+```{r}
+
+ps0 <- read_phyloseq(otu.file = "./ng_tax_output/EAF002_AF_150_06_Final_minus_OTU_rev_taxformat.biom",
+                     taxonomy.file = NULL,
+                     metadata.file = "./ng_tax_output/EAF002_150_06minPerT_map.csv",
+                     type = "biom")
+ps0
+
+dir.create("phyloseq_rds")
+
+saveRDS(ps0, "./phyloseq_rds/ps0.rds")
+
+#358 OTU and 64 samples
+
+# no need to remove samples (3, 63,65 & 86 as done with the bacterial dataset) as they were not sequenced
+
+
+#Add tree file
+
+tree <- ape::read.tree("./ng_tax_output/otu_merged_minus_18_NTC_nonAF_OTU.dnd")
+
+ps1 <- merge_phyloseq(ps0, tree)
+ps1
+saveRDS(ps1, "./phyloseq_rds/ps1.rds")
+
+```
+
+## Format and save Rds
+
+```{r}
+#change column header names
+
+ps1 <- readRDS("./phyloseq_rds/ps1.rds")
+
+head(tax_table(ps1))
+
+colnames(tax_table(ps1)) <- c("Phylum", "Class", "Order", "Family", "Genus", "Clade")
+
+head(tax_table(ps1))
+
+
+```
+
+
+## Tranformation
+
+```{r}
+#transform to relative abundance for equine phyloseq object ps1
+ps.rel <- microbiome::transform(ps1, "compositional")
+
+#export a taxonomy table with the OTU numbers and taxonomy info 
+tax <-tax_table(ps.rel)
+write.table(tax, "./results/tax_info.txt")
+
+```
+
+
+
+```{r}
+
+unique(tax_table(ps1)[, "Genus"])
+
+ps1.com <- ps1
+
+tax_table(ps1.com)[tax_table(ps1.com)[, "Genus"] == "g_NA"] <- "Unclassified Genus"
+
+
+unique(tax_table(ps1.com)[, "Genus"])
+
+
+tax_table(ps1.com)[, colnames(tax_table(ps1.com))] <- gsub(tax_table(ps1.com)[, 
+                                                                              colnames(tax_table(ps1.com))], pattern = "[a-z]_", replacement = "")
+
+unique(tax_table(ps1.com)[, "Genus"])
+
+pseq.phy <- aggregate_top_taxa(ps1.com, "Genus", top = 9)
+pseq.phy <- transform(pseq.phy, "compositional")
+pseq.phy.df <- phy_to_ldf(pseq.phy, transform.counts = NULL)
+pseq.phy.df.sub <- subset(pseq.phy.df, Genus != "Other")
+
+```
+
+## Boxplot Genus  
+
+```{r}
+
+pseq.fam.df.phy <- phy_to_ldf(ps1.com, transform.counts = NULL)
+head(pseq.phy.df.sub)
+
+#pseq.phy.df.sub$Genus <- pseq.fam.df.phy$Genus[match(pseq.phy.df.sub$Genus, pseq.fam.df.phy$Genus) ]
+
+pseq.phy.df.sub$Phylum <- pseq.fam.df.phy$Phylum[match(pseq.phy.df.sub$Genus, pseq.phy.df.sub$Genus) ]
+
+
+#pseq.fam.df.sub.v
+#unique(pseq.fam.df.sub.v$OTUID)
+head(pseq.phy.df.sub)
+pseq.fam.df.sub.v <- pseq.phy.df.sub[order(pseq.phy.df.sub$Phylum),]
+
+pseq.fam.df.sub.v$Genus <- factor(pseq.fam.df.sub.v$Genus, levels = unique(pseq.fam.df.sub.v$Genus))
+
+
+p <- ggplot(pseq.fam.df.sub.v, aes(x = Genus,
+                         y=Abundance))
+
+p <- p + geom_boxplot(aes(fill = Equine_Type))
+#p <- p +  facet_grid(sample_organism~Phylum)
+p <- p + theme_bw() 
+p <- p + ylab("Relative abundance") + scale_fill_brewer("Equine_Type",
+                      palette = "Set1")+ theme(strip.text = element_text(face = "italic"))
+p <- p + theme(axis.text.x = element_text(face ="italic",
+                                     angle = 90, hjust=0.95,vjust=0.2)) 
+p <- p + ggtitle("Genus level differences for 9 genera")
+p
+
+
+ggsave("./results/Genus_top9_boxplot_USE.pdf", height = 6, width = 10)
+
+```
+
+## Boxplot Clade  
+```{r}
+
+head(tax_table(ps1.com))
+
+unique(tax_table(ps1.com)[, "Clade"])
+
+tax_table(ps1.com)[tax_table(ps1.com)[, "Clade"] == "Unclassified Genus"] <- "Unclassified Clade"
+tax_table(ps1.com)[tax_table(ps1.com)[, "Clade"] == "NA"] <- "Unclassified Clade"
+unique(tax_table(ps1.com)[, "Clade"])
+```
+
+```{r}
+source("./codes/plot_taxa_boxplot_edit.R")
+p <- plot_taxa_boxplot_edit(ps1.com, taxonomic.level = "Clade",
+                        top.otu = 10, VariableA = "Equine_Type",
+                        title = "Clade level differences for 10 clades", color = "Set1")
+
+p
+
+# for other colour scheme:  p <-  ggpar(p , palette = "Paired", legend.title = "Equine Type")
+
+ggsave("./results/clade_10_boxplot_USE.pdf", height = 6, width = 10)
+```
+## Beta diversity
+
+```{r}
+#Beta diversity
+
+#check for skewnness
+
+hist(taxa_sums(ps1))
+
+hist(log10(taxa_sums(ps1)))
+
+hist(taxa_sums(ps.rel))
+
+```
+
+
+
+## Weighted unifrac based on abundances   
+```{r}
+set.seed(28219)
+#weighted unifrac based on abundances 
+ps.log10 <- microbiome::transform(ps1, "log10")
+
+wunifrac.mds <- ordinate(ps.log10, method = "MDS", 
+                          distance = "wunifrac")
+
+
+wunifrac.mds.plot <- plot_ordination(ps.log10, wunifrac.mds, 
+                                      color = "Equine_Type", 
+                                      title = "Weighted Unifrac") +  labs(col = "Equine_Type") 
+
+wunifrac.mds.plot <- wunifrac.mds.plot + geom_point(size = 2) + theme_bw() + stat_ellipse() + scale_color_brewer("Equine Type", palette = "Set1") 
+
+wunifrac.mds.plot <- wunifrac.mds.plot + xlim(-0.5, 0.5) + ylim(-0.6, 0.6)
+wunifrac.mds.plot
+
+
+ggsave("./results/MDS using Weighted Unifrac_Log10.pdf", height = 6, width = 8)
+
+```
+
+
+## Unweighted unifrac based on abundances
+
+```{r}
+
+#unweighted unifrac based on abundances log10
+unifrac.pcoa <- ordinate(ps.log10, method = "MDS", distance = "unifrac")
+
+
+unifrac.pcoa.plot <- plot_ordination(ps.log10, unifrac.pcoa, 
+                                     color = "Equine_Type", 
+                                     title = "UnWeighted Unifrac") +
+  labs(col = "Equine_Type") + scale_color_brewer("Equine Type", palette = "Set1")
+
+
+unifrac.pcoa.plot <- unifrac.pcoa.plot + geom_point(size = 2) + theme_bw() + stat_ellipse()
+unifrac.pcoa.plot <- unifrac.pcoa.plot + xlim(-0.7, 0.7) + ylim(-0.75, 0.75)
+unifrac.pcoa.plot
+ggsave("./results/MDS using UnWeighted Unifrac_Log10.pdf", height = 6, width = 8)
+
+```
+
+Merge plots
+
+```{r}
+
+p.ordinate.fun <- ggarrange(unifrac.pcoa.plot, wunifrac.mds.plot,
+                        common.legend = TRUE, labels = c("A", "B"))
+p.ordinate.fun
+ggsave("./results/Both_PCoA Unifrac_log10.pdf", height = 4, width = 7)
+ggsave("./results/Both_PCoA Unifrac_log10.tiff", height = 4, width = 7)
+
+```
+
+
+
+```{r}
+sessionInfo()
+```
+

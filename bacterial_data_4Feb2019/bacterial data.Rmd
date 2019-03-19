@@ -1,0 +1,445 @@
+---
+title: "The Core Equine Faecal Microbiome: A Broader Perspective (Bacteria/Archaea data)"
+author: "Joan E. Edwards"
+date: "5 March 2019"
+output: html_document
+---
+
+
+```{r}
+#activate all libraries each time you start a new session:
+library(microbiome)
+library(microbiomeutilities)
+library(RColorBrewer)
+library(ggpubr)
+
+dir.create("results")
+
+```
+
+
+
+```{r, eval=FALSE}
+
+ps0 <- read_phyloseq(otu.file = "./ng_tax_output/EAF002_16S_rerun.biom",
+                     taxonomy.file = NULL,
+                     metadata.file = "./ng_tax_output/EAF002_16S_rerun_map.csv",
+                     type = "biom")
+ps0
+
+# removed samples, Joan knows why (outlier X3 and extra zebras)
+ps1 <- remove_samples(c("X3", "X63", "X65","X68"), ps0) 
+
+ps1
+
+# we removed some samples, there could be OTUs only detected in these so filter them
+
+ps1 <- prune_taxa(taxa_sums(ps1) > 0, ps1)
+ps1
+
+#now 2118 OTUS
+
+#Wierd emply labels in taxonomy. clean them
+
+tree <- ape::read.tree("./ng_tax_output/all_otus.tree")
+
+ps1 <- merge_phyloseq(ps1, tree)
+tax.mat <- tax_table(ps1)
+tax.df <- as.data.frame(tax.mat)
+
+tax.df[tax.df == "g__<empty>"] <- "g__"
+tax.df[tax.df == "k__<empty>"] <- "k__"
+tax.df[tax.df == "p__<empty>"] <- "p__"
+tax.df[tax.df == "c__<empty>"] <- "c__"
+tax.df[tax.df == "o__<empty>"] <- "o__"
+tax.df[tax.df == "f__<empty>"] <- "f__"
+tax_table(ps1) <- tax_table(as.matrix(tax.df))
+
+dir.create("phyloseq_rds")
+
+saveRDS(ps1, "./phyloseq_rds/ps1.rds")
+
+```
+
+
+```{r}
+ps1 <- readRDS("./phyloseq_rds/ps1.rds")
+```
+
+
+```{r}
+#transform to relative abundance for equine phyloseq object ps1
+ps.rel <- microbiome::transform(ps1, "compositional")
+
+#export a taxonomy table with the OTU numbers and taxonomy info (Ran helped me!)
+tax <-tax_table(ps.rel)
+write.table(tax, "./results/tax_info.txt")
+
+```
+
+
+## Boxplot Phylum 
+
+```{r}
+
+ps1.com <- ps1
+
+unique(tax_table(ps1)[, "Phylum"])
+
+tax_table(ps1.com)[tax_table(ps1.com)[, "Phylum"] == "p__", "Phylum"] <- "p__Unclassified Phylum"
+
+tax_table(ps1.com)[, colnames(tax_table(ps1.com))] <- gsub(tax_table(ps1.com)[, 
+                                                                              colnames(tax_table(ps1.com))], pattern = "[a-z]__", replacement = "")
+head(tax_table(ps1.com))
+
+pseq.phy <- aggregate_top_taxa(ps1.com, "Phylum", top = 6)
+pseq.phy <- transform(pseq.phy, "compositional")
+pseq.phy.df <- phy_to_ldf(pseq.phy, transform.counts = NULL)
+pseq.phy.df.sub <- subset(pseq.phy.df, Phylum != "Other")
+
+p <- ggplot(pseq.phy.df.sub, aes(x =Phylum, y=Abundance))
+
+p <- p + geom_boxplot(aes(fill = sample_organism),position = position_dodge(1))
+p <- p + theme_bw() 
+p <- p + ylab("Relative abundance") + scale_fill_brewer("Equine_Type",
+                      palette = "Set1")+ theme(strip.text = element_text(face = "italic"))
+p <- p  + rotate_x_text() + ggtitle("Phylum level differences for top 6 phyla")
+
+
+ggsave("./results/phylum_top6_boxplot_USE.pdf", height = 6, width = 10)
+```
+
+
+## Boxplot Family  
+
+```{r}
+
+unique(tax_table(ps1.com)[, "Family"])
+tax_table(ps1.com)[tax_table(ps1.com)[, "Family"] == "", "Family"] <- "Unclassified Family"
+#unique(tax_table(ps1.com)[, "Family"])
+
+
+pseq.fam <- aggregate_taxa(ps1.com, "Family")
+pseq.fam2 <- aggregate_top_taxa(ps1.com, "Family", top = 20)
+
+head(tax_table(pseq.fam2))
+
+pseq.fam2 <- transform(pseq.fam2, "compositional")
+pseq.fam.df <- phy_to_ldf(pseq.fam2, transform.counts = NULL)
+pseq.fam.df.sub <- subset(pseq.fam.df, Family != "Other")
+head(pseq.fam.df.sub)
+
+pseq.fam.df.phy <- phy_to_ldf(ps1.com, transform.counts = NULL)
+head(pseq.fam.df.sub)
+
+pseq.fam.df.sub$Phylum <- pseq.fam.df.phy$Phylum[match(pseq.fam.df.sub$Family, pseq.fam.df.phy$Family) ]
+
+
+```
+
+
+```{r}
+
+pseq.fam.df.sub.v <- pseq.fam.df.sub[order(pseq.fam.df.sub$Phylum),]
+#pseq.fam.df.sub.v
+unique(pseq.fam.df.sub.v$OTUID)
+
+pseq.fam.df.sub.v$Family <- factor(pseq.fam.df.sub.v$Family, levels = unique(pseq.fam.df.sub.v$Family))
+
+p <- ggplot(pseq.fam.df.sub.v, aes(x = Family,
+                         y=Abundance))
+
+p <- p + geom_boxplot(aes(fill = sample_organism))
+#p <- p +  facet_grid(sample_organism~Phylum)
+p <- p + theme_bw() 
+p <- p + ylab("Relative abundance") + scale_fill_brewer("Equine_Type",
+                      palette = "Set1")+ theme(strip.text = element_text(face = "italic"))
+p <- p + theme(axis.text.x = element_text(face ="italic",
+                                     angle = 90, hjust=0.95,vjust=0.2)) 
+p <- p + ggtitle("Family level differences for top 20 families")
+p
+
+
+#for other colour scheme:  p <-  ggpar(p , palette = "Paired", legend.title = "Equine Type")
+
+ggsave("./results/Family_20_boxplot_USE.pdf", height = 6, width = 10)
+
+```
+
+## wunifrac  
+
+```{r}
+#check for skewnness
+set.seed(82010)
+hist(taxa_sums(ps1))
+
+hist(log10(taxa_sums(ps1)))
+
+#hist(taxa_sums(ps.rel))
+
+#proceed with log10 data for beta-diversity weighted unifrac
+
+ps1.log10 <- microbiome::transform(ps1, "log10")
+
+wunifraclog10.pcoa <- ordinate(ps1.log10, method = "MDS", distance = "wunifrac")
+
+
+wunifraclog10.pcoa.plot <- plot_ordination(ps1.log10, wunifraclog10.pcoa, color = "sample_organism", title = "Weighted Unifrac") +
+  labs(col = "Equine Type") 
+
+wunifraclog10.pcoa.plot <- wunifraclog10.pcoa.plot + scale_color_brewer("Equine Type", palette = "Set1")
+wunifraclog10.pcoa.plot <- wunifraclog10.pcoa.plot + geom_point(size = 2) + theme_bw() + stat_ellipse()
+
+wunifraclog10.pcoa.plot <-  wunifraclog10.pcoa.plot + ylim(-0.1, 0.1) #+ xlim(-0.3, 0.3)
+
+ggsave("./results/MDS using Weighted Unifrac_log10.pdf", height = 6, width = 8)
+
+
+```
+
+
+```{r}
+#proceed with log10 data for unweighted unifrac
+
+unifraclog10.pcoa <- ordinate(ps1.log10, method = "MDS", distance = "unifrac")
+
+
+unifraclog10.pcoa.plot <- plot_ordination(ps1.log10, unifraclog10.pcoa, color = "sample_organism", title = "UnWeighted Unifrac") +
+  labs(col = "Equine Type") + scale_color_brewer("Equine Type", palette = "Set1")
+
+unifraclog10.pcoa.plot <- unifraclog10.pcoa.plot + geom_point(size = 2) + theme_bw()
+
+unifraclog10.pcoa.plot <- unifraclog10.pcoa.plot + stat_ellipse() + xlim(-0.3, 0.3) #+ ylim(-0.2, 0.3) 
+
+unifraclog10.pcoa.plot
+
+ggsave("./results/MDS using UnWeighted Unifrac_log10.pdf", height = 4, width = 8)
+
+```
+
+Merge plots
+
+```{r}
+
+p.ordinate <- ggarrange(unifraclog10.pcoa.plot,wunifraclog10.pcoa.plot,
+                        common.legend = TRUE, labels = c("A", "B"))
+p.ordinate
+
+ggsave("./results/Both_PCoA Unifrac_log10.pdf", height = 4, width = 7)
+ggsave("./results/Both_PCoA Unifrac_log10.tiff", height = 4, width = 7)
+```
+
+## Core microbiota at OTU level  
+
+### line_core
+```{r}
+# create folder
+#dir.create("Equine Core")
+
+
+#Use ps.rel.format instead of ps1.com
+
+taxic <- as.data.frame(ps.rel@tax_table)
+
+otu.df <- as.data.frame(otu_table(ps.rel))  
+
+# make a dataframe for OTU information.
+
+# head(otu.df) # check the rows and columns
+head(otu.df)
+write.table (otu.df, "./results/OTU_RelAbund_ALL.txt")
+
+taxic$OTU <- row.names.data.frame(otu.df)  # Add the OTU ids from OTU table into the taxa table at the end.
+
+colnames(taxic)  # You can see that we now have extra taxonomy levels.
+
+taxmat <- as.matrix(taxic)  # convert it into a matrix.
+
+new.tax <- tax_table(taxmat)  # convert into phyloseq compatible file.
+
+tax_table(ps.rel) <- new.tax  # incroporate into phyloseq Object
+
+
+# With compositional (relative) abundances
+det <- c(0, 0.1, 0.5, 2, 5, 20)/100
+prevalences <- seq(.05, 1, .05)
+line_core <- plot_core(ps.rel, prevalences = prevalences, detections = det, plot.type = "lineplot") + xlab("Relative Abundance (%)")
+
+line_core
+
+```
+
+
+### Heatmap core   
+
+```{r}
+prevalences <- seq(.05, 1, .05)
+detections <- 10^seq(log10(1e-3), log10(.2), length = 10)
+
+ps.rel.format <- format_phyloseq(ps.rel)
+
+equinecore <- plot_core(ps.rel.format, plot.type = "heatmap", 
+                        prevalences = prevalences,
+                        detections = detections,
+                        colours = rev(brewer.pal(5, "Spectral")),
+                        min.prevalence = .75, horizontal = F)
+# get the data used for plotting 
+
+### equinecore is the plot object output of plot_core
+
+df <- equinecore$data 
+
+# get the list of OTUs
+list <- df$Taxa 
+
+# check the OTU ids
+#print(list) 
+
+# get the taxonomy data
+tax <- tax_table(ps.rel)
+tax <- as.data.frame(tax)
+
+# add the OTus to the last column
+tax$OTU <- rownames(tax)
+
+# select taxonomy of only 
+# those OTUs that are used in the plot
+tax2 <- dplyr::filter(tax, rownames(tax) %in% list) 
+
+# head(tax2)
+
+# To have the OTU names also
+# We will merge all the column into one except the as all is bacteria in this case
+tax.unit <- tidyr::unite(tax2, Taxa_level,c("Phylum", "Class", "Order", "Family", "Genus", "OTU"), sep = "; ", remove = TRUE)
+
+tax.unit$Taxa_level <- gsub(pattern="[a-z]__",replacement="", tax.unit$Taxa_level)
+
+# add this new information into the plot data df
+
+df$Taxa <- tax.unit$Taxa_level
+
+#####The data frame df contains the data you want to plot. 
+# here reorder is the function of interest.
+p <- ggplot(df, aes(x=DetectionThreshold, reorder(Taxa, Prevalence), fill=Prevalence))
+p <- p + geom_tile() + theme(axis.text.y = element_text(face="italic"))
+p <- p + xlab("Detection Threshold (Relative Abundance)") + ylab("OTU")
+p <- p + scale_x_log10() + 
+  scale_fill_gradientn(colours = rev(brewer.pal(5, "RdYlBu"))) +
+  theme_bw(base_size=) + ggtitle("Equine Core Microbiota") + theme(axis.text.y = element_text(face="italic"))
+print(p)
+ggsave("./results/equine_core_microbiome_heatmap.pdf", height = 6, width = 10)
+
+```
+
+## Core microbiota at Genus level  
+
+```{r}
+###############EQUINE GENUS LEVEL HEATMAP with OTU ID names added to unclassified levels ##################################
+
+# main phyloseq object
+ps1 
+
+## Merge at genus level
+
+colnames(tax_table(ps1)) <- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus")
+ps.gen <- tax_glom(ps1, "Genus")
+
+ps.gen.rel <- microbiome::transform(ps.gen, "compositional") # tranformed to relative abundance
+
+#export a taxonomy table with the genera and taxonomy info
+tax <-tax_table(ps.gen.rel)
+write.table(tax, "./results/genus_info.txt")
+write_phyloseq(ps.gen.rel, "TAXONOMY")
+```
+
+### line_core  
+
+```{r}
+
+# With compositional (relative) abundances
+det <- c(0, 0.1, 0.5, 2, 5, 20)/100
+prevalences <- seq(.05, 1, .05)
+line_core <- plot_core(ps.gen.rel, prevalences = prevalences, detections = det, plot.type = "lineplot") + xlab("Relative Abundance (%)")
+
+line_core
+
+```
+
+
+### Heatmap core  
+
+```{r}
+
+prevalences <- seq(.05, 1, .05)
+detections <- 10^seq(log10(1e-3), log10(.2), length = 10)
+#library(RColorBrewer)
+ps.gen.rel.format <- format_phyloseq(ps.gen.rel)
+equinecore_gen <- plot_core(ps.gen.rel.format, plot.type = "heatmap", 
+                        prevalences = prevalences,
+                        detections = detections,
+                        colours = rev(brewer.pal(5, "Spectral")),
+                        min.prevalence = .75, horizontal = F)
+
+# get the data used for plotting
+df <- equinecore_gen$data 
+#unique(df)
+#DT::datatable(unique(df))
+# get the list of genera
+list <- df$Taxa 
+
+# check the genera ids
+print(list) 
+write.table (list,"./results/genus_list.txt" )
+
+# Get the taxonomy data
+tax <- tax_table(ps.gen.rel.format)
+head(tax)
+tax.df <- as.data.frame(tax)
+# add the genera to last column
+#tax.df$Genus <- rownames(tax.df)
+
+tax_table(ps.gen.rel.format) <- tax_table(as.matrix(tax.df))
+# select taxonomy of only 
+# those OTUs that are used in the plot
+tax2 <- dplyr::filter(tax.df, rownames(tax.df) %in% list) 
+
+
+#head(tax2)
+#print(tax2)
+
+# We will merege all the column into one except the Doamin as all is bacteria in this case
+tax.unit <- tidyr::unite(tax2, Taxa_level,c("Phylum", "Class", "Order", "Family","Genus"), sep = "; ", remove = TRUE)
+
+tax.unit$Taxa_level <- gsub(pattern="[a-z]__",replacement="", tax.unit$Taxa_level)
+
+# add this new information into the plot data df
+
+df$Taxa <- tax.unit$Taxa_level
+
+# you can see now we have the taxonomic information
+knitr::kable(head(df))
+
+# replace the data in the plot object
+equinecore_gen$data <- df
+
+# plot(equinecore + theme(axis.text.y = element_text(face="italic")))
+
+#####
+#The data frame df contains the data you want to plot. 
+# here reorder is the function of interest.
+p <- ggplot(df, aes(x=DetectionThreshold, reorder(Taxa, Prevalence), fill=Prevalence))
+p <- p + geom_tile() + theme(axis.text.y = element_text(face="italic"))
+p <- p + xlab("Detection Threshold (Relative Abundance)") + ylab("OTU")
+p <- p + scale_x_log10() + 
+  scale_fill_gradientn(colours = rev(brewer.pal(5, "RdYlBu"))) +
+  theme_bw(base_size=10) + ggtitle("Equine Core Microbiota") + theme(axis.text.y = element_text(face="italic"))
+print(p)
+ggsave("./results/equine_core_microbiome_heatmap_genuslevel_allranks.pdf", height = 10, width = 14)
+
+```
+
+
+```{r}
+sessionInfo()
+```
+
