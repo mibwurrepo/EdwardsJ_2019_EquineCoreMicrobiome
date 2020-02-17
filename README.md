@@ -1,12 +1,12 @@
 
-Study title: The Core Equine Hindgut Faecal Microbiome: A Broader Perspective  
----------------------------------------------------------------------------------
+Study title: Multi-kingdom characterization of the core equine fecal microbiota based on multiple equine (sub) species    
+----------------------------------------------------------------------------------------------------------------------
 
 Authors: J.E. Edwards*, S.A. Shetty, P. van den Berg, F. Burden, D.A. van Doorn, W.F. Pellikaan, J. Dijkstra and H. Smidt  
 
 Correspondence: JE (joan.edwards[at]wur.nl)   
 
-This repository contains codes for analysis done in the research article by Edwards JE, et al (2019) The Core Equine Hindgut Faecal Microbiome: A Broader Perspective.  _Under review_. [XX](tobeupdated_when_uplished).  
+This repository contains codes for analysis done in the research article by Edwards, J.E., Shetty, S.A., van den Berg, P., Burden, F., van Doorn, D.A., Pellikaan, W.F., Dijkstra, J. and Smidt, H. (2020). Multi-kingdom characterization of the core equine fecal microbiota based on multiple equine (sub) species. *Animal Microbiome*, 2(1), pp.1-16. [link to article](https://animalmicrobiome.biomedcentral.com/articles/10.1186/s42523-020-0023-1).   
 
 Structure:  
 EdwardsJ_2019_EquineCoreMicrobiome  
